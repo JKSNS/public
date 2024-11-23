@@ -4,33 +4,21 @@
   imports = [ ./hardware-configuration.nix ];
 
   ### System Configuration ###
-  boot.loader.grub = {
-    enable = true;
-    device = "/dev/sda";
-    useOSProber = true;
-  };
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "/dev/sda";
+  boot.loader.grub.useOSProber = true;
 
-  networking = {
-    hostName = "nixos";
-    networkmanager.enable = true;
-  };
+  networking.hostName = "nixos";
+  networking.networkmanager.enable = true;
 
   time.timeZone = "America/Boise";
 
   i18n.defaultLocale = "en_US.UTF-8";
 
-  ### Logging ###
-  services.syslogd.enable = true;
-
   ### Desktop Environment ###
-  services = {
-    xserver = {
-      enable = true;
-      xkb = { layout = "us"; };
-    };
-    displayManager.sddm.enable = true;
-    desktopManager.plasma5.enable = true;
-  };
+  services.xserver.enable = true;
+  services.displayManager.sddm.enable = true;
+  services.desktopManager.plasma6.enable = true;
 
   ### User Management ###
   users.users = {
@@ -38,7 +26,7 @@
       isNormalUser = true;
       description = "nixos";
       extraGroups = [ "networkmanager" "wheel" ];
-      packages = with pkgs; [ kdeApplications.kate ];
+      packages = with pkgs; [ kdePackages.kate ];
     };
     CCDCUser1 = {
       isNormalUser = true;
@@ -56,15 +44,13 @@
   };
 
   ### Security ###
-  security.audit = {
-    enable = true;
-    rules = [
-      "-w /etc/passwd -p wa -k passwd_changes"
-      "-w /etc/shadow -p wa -k shadow_changes"
-      "-w /etc/ssh/sshd_config -p wa -k ssh_config_changes"
-      "-w /var/log/ -p wa -k log_access"
-    ];
-  };
+  security.audit.enable = true;
+  security.audit.rules = [
+    "-w /etc/passwd -p wa -k passwd_changes"
+    "-w /etc/shadow -p wa -k shadow_changes"
+    "-w /etc/ssh/sshd_config -p wa -k ssh_config_changes"
+    "-w /var/log/ -p wa -k log_access"
+  ];
 
   services.openssh = {
     enable = true;
@@ -81,25 +67,18 @@
     allowedUDPPorts = [ 53 ];
   };
 
-  ### Additional System Packages ###
+  ### Logging ###
   environment.systemPackages = with pkgs; [
-    vim wget unzip acl rsyslog
+    vim wget unzip acl
   ];
-
-  ### Rsyslog Configuration ###
-  services.rsyslog = {
-    enable = true;
-    extraConfig = ''
-      *.* @@splunk.indexer:514
-    '';
-  };
 
   ### Splunk Forwarder ###
   systemd.services.splunk-forwarder = {
     description = "Splunk Forwarder Service";
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.wget}/bin/wget -O - https://splunk/indexer-script | bash'";
+      ExecStart = "${pkgs.wget}/bin/wget -O - https://splunk/indexer-script | bash";
+      Restart = "always";
     };
   };
 
@@ -110,6 +89,5 @@
     nginx.enable = false;   # Disable Nginx to avoid conflicts
   };
 
-  ### System State Version ###
   system.stateVersion = "24.05";
 }
