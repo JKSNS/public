@@ -1,0 +1,100 @@
+{ config, pkgs, ... }:
+
+{
+  imports = [ ./hardware-configuration.nix ];
+
+  ### System Configuration ###
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "/dev/sda";
+  boot.loader.grub.useOSProber = true;
+
+  networking.hostName = "nixos";
+  networking.networkmanager.enable = true;
+
+  time.timeZone = "America/Boise";
+
+  i18n.defaultLocale = "en_US.UTF-8";
+
+  services.syslogd.enable = true;
+
+  ### Desktop Environment ###
+  services.xserver.enable = true;
+  services.displayManager.sddm.enable = true;
+  services.desktopManager.plasma6.enable = true;
+
+  ### User Management ###
+  users.users = {
+    nixos = {
+      isNormalUser = true;
+      description = "nixos";
+      extraGroups = [ "networkmanager" "wheel" ];
+      packages = with pkgs; [ kdePackages.kate ];
+    };
+    CCDCUser1 = {
+      isNormalUser = true;
+      description = "CCDC Admin User";
+      home = "/home/CCDCUser1";
+      extraGroups = [ "wheel" ];
+      shell = pkgs.bash;
+    };
+    CCDCUser2 = {
+      isNormalUser = true;
+      description = "CCDC Limited User";
+      home = "/home/CCDCUser2";
+      shell = pkgs.bash;
+    };
+  };
+
+  ### Security ###
+  security.audit.enable = true;
+  security.audit.rules = [
+    "-w /etc/passwd -p wa -k passwd_changes"
+    "-w /etc/shadow -p wa -k shadow_changes"
+    "-w /etc/ssh/sshd_config -p wa -k ssh_config_changes"
+    "-w /var/log/ -p wa -k log_access"
+  ];
+
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      AllowUsers = "CCDCUser1 CCDCUser2";
+    };
+  };
+
+  ### Firewall ###
+  networking.firewall = {
+    enable = true;
+    allowedTCPPorts = [ 22 80 443 25 110 143 995 ];
+    allowedUDPPorts = [ 53 ];
+  };
+
+  ### Logging ###
+  environment.systemPackages = with pkgs; [
+    vim wget unzip acl rsyslog
+  ];
+
+  services.rsyslog = {
+    enable = true;
+    extraConfig = ''
+      *.* @@splunk.indexer:514
+    '';
+  };
+
+  ### Splunk Forwarder ###
+  systemd.services.splunk-forwarder = {
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.wget}/bin/wget -O - https://splunk/indexer-script | bash";
+    };
+  };
+
+  ### Scored Services ###
+  services = {
+    postfix.enable = true;  # Mail server
+    httpd.enable = true;    # Apache web server
+    nginx.enable = false;   # Disable Nginx to avoid conflicts
+  };
+
+  system.stateVersion = "24.05";
+}
