@@ -68,6 +68,7 @@
   services.openssh.enable = true;
   services.openssh.settings = {
     PasswordAuthentication = true;
+    AllowUsers = [ "CCDCUser1" "CCDCUser2" ];
   };
 
   ### Firewall ###
